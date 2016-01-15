@@ -17,6 +17,8 @@
  */
 package cache;
 
+import cache.scheduler.Scheduler;
+import cache.scheduler.SchedulerType;
 import cache.type.Format;
 import cache.type.PolicyType;
 import cache.type.Type;
@@ -77,6 +79,12 @@ public interface ICache{
      * @return le format du cache
      */
     public Format getFormat();
+    
+    /**
+     * Permet de connaitre le scheduler untilisé par le cache
+     * @return type du scheduler
+     */
+    public SchedulerType getScheduler();
     
     /**
      * Renvoie la taille d'un cache en nombre de bloc.
