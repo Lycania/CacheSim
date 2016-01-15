@@ -36,7 +36,7 @@ public class FullAssociativeCache extends Cache {
     private final List<Integer> addresses;
     private final Scheduler scheduler;
     
-    public FullAssociativeCache(Type t, int schedulerType,
+    public FullAssociativeCache(Type t, SchedulerType schedulerType,
             PolicyType policyType, int blocksCount, int wordsPerBlock,
             int wordSize) {
         super(t, policyType, blocksCount, wordsPerBlock, wordSize);
@@ -49,24 +49,12 @@ public class FullAssociativeCache extends Cache {
         
         /* Initialisation du scheduler */
         switch (schedulerType) {
-            case Scheduler.FIFO : 
-                scheduler = new FifoScheduler(blocksCount);break;
-                
-            case Scheduler.LFU :
-                scheduler = new LfuScheduler(blocksCount);break;
-                
-            case Scheduler.LIFO :
-                scheduler = new LifoScheduler(blocksCount);break;
-                
-            case Scheduler.LRU :
-                scheduler = new LruScheduler(blocksCount);break;
-                
-            case Scheduler.NMRU :
-                scheduler = new NmruScheduler(blocksCount);break;
-                
-            case Scheduler.RANDOM :
-                scheduler = new RandomScheduler(blocksCount);break;
-                
+            case FIFO: scheduler = new FifoScheduler(blocksCount);break;
+            case LFU:  scheduler = new LfuScheduler(blocksCount);break;
+            case LIFO: scheduler = new LifoScheduler(blocksCount);break;
+            case LRU:  scheduler = new LruScheduler(blocksCount);break;
+            case NMRU: scheduler = new NmruScheduler(blocksCount);break;
+            case RANDOM: scheduler = new RandomScheduler(blocksCount);break;
             default : scheduler = null;
         }
         

@@ -34,7 +34,7 @@ public class SetAssociativeCache extends Cache {
     private final List<Scheduler> schedulers;
     private final int nuSet;
     
-    public SetAssociativeCache(Type t, int schedulerType, PolicyType policyType, int setCount, int cadreCount, int wordsPerBlock, int wordSize) {
+    public SetAssociativeCache(Type t, SchedulerType schedulerType, PolicyType policyType, int setCount, int cadreCount, int wordsPerBlock, int wordSize) {
         super(t, policyType, setCount, wordsPerBlock, wordSize);
 
         this.nuSet = cadreCount;
@@ -45,29 +45,16 @@ public class SetAssociativeCache extends Cache {
             this.cadres.add(new DirectMappedCache(t, policyType, setCount, wordsPerBlock, wordSize));
         }
         
-        /* Initialisation des schedulers */
-        this.schedulers = new ArrayList<>(setCount);
-        for (int i = 0 ; i < setCount ; ++i){
-            switch (schedulerType) {
-                case Scheduler.FIFO : 
-                    this.schedulers.add(new FifoScheduler(cadreCount));
-                break;
-                case Scheduler.LFU :
-                    this.schedulers.add(new LfuScheduler(cadreCount));
-                break;
-                case Scheduler.LIFO :
-                    this.schedulers.add(new LifoScheduler(cadreCount));
-                break;
-                case Scheduler.LRU :
-                    this.schedulers.add(new LruScheduler(cadreCount));
-                break;
-                case Scheduler.NMRU :
-                    this.schedulers.add(new NmruScheduler(cadreCount));
-                break;
-                case Scheduler.RANDOM :
-                    this.schedulers.add(new RandomScheduler(cadreCount));
-                break;
-            }
+         /* Initialisation du scheduler */
+         this.schedulers = new ArrayList<>(setCount);
+        switch (schedulerType) {
+            case FIFO: schedulers.add(new FifoScheduler(cadreCount));break;
+            case LFU:  schedulers.add(new LfuScheduler(cadreCount));break;
+            case LIFO: schedulers.add(new LifoScheduler(cadreCount));break;
+            case LRU:  schedulers.add(new LruScheduler(cadreCount));break;
+            case NMRU: schedulers.add(new NmruScheduler(cadreCount));break;
+            case RANDOM: schedulers.add(new RandomScheduler(cadreCount));break;
+            default : break;
         }
     }
     

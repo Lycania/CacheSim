@@ -21,6 +21,8 @@ import cache.policy.DelayedPolicy;
 import cache.policy.DirectWritePolicy;
 import cache.type.Type;
 import cache.policy.Policy;
+import cache.scheduler.Scheduler;
+import cache.scheduler.SchedulerType;
 import cache.type.PolicyType;
 
 /**
@@ -30,6 +32,7 @@ import cache.type.PolicyType;
 public abstract class Cache implements ICache, IIO {
     protected final Type  type;
     protected Policy      policy;
+    protected SchedulerType   schedulerType;
     
     protected final int wordsPerBlock;
     protected final int setCount;
@@ -41,6 +44,7 @@ public abstract class Cache implements ICache, IIO {
         this.setCount = setCount;
         this.wordsPerBlock = wordsPerBlock;
         this.wordSize = wordSize;
+        this.schedulerType = SchedulerType.NONE;
         
         switch (policyType) {
             case DELAYED :
@@ -88,7 +92,7 @@ public abstract class Cache implements ICache, IIO {
         final int offset = addr % (this.wordsPerBlock * this.wordSize);
         return addr - offset;
     }
-
+    
     @Override
     public final int getBlockSize() {
         return this.wordsPerBlock;
@@ -97,6 +101,11 @@ public abstract class Cache implements ICache, IIO {
     @Override
     public final int getWordSize() {
         return this.wordSize;
+    }
+
+    @Override
+    public final SchedulerType getScheduler() {
+        return this.schedulerType;
     }
 
     @Override
