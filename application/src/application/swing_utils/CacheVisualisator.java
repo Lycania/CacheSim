@@ -23,7 +23,6 @@ import application.model.TagTableModel;
 import application.renderer.DataTableRenderer;
 import application.renderer.MyTableHeaderRenderer;
 import application.renderer.TagTableRenderer;
-import application.ui.VerticalLabelUI;
 import cache.Block;
 import cache.Cache;
 import cache.DirectMappedCache;
@@ -127,6 +126,7 @@ public class CacheVisualisator extends javax.swing.JPanel {
             // d'écrire les nom à la verticales et de leur insérier à chacun 
             // un cacheVisualisator relier au directMappedCache correspondant
             int compteur = 0;
+            /*
             for (DirectMappedCache dmc : ((SetAssociativeCache) c).getCadres()) {
                 String title = "L" + (compteur + 1);
                 
@@ -142,6 +142,7 @@ public class CacheVisualisator extends javax.swing.JPanel {
                 setPane.addTab(title, cv);
                 setPane.setTabComponentAt(compteur++, lTitle);
             }
+            */
             
             // on supprimer le JSplitPane présent et on le remplace par notre
             // JTabbedPane
@@ -220,6 +221,7 @@ public class CacheVisualisator extends javax.swing.JPanel {
 
         setAutoscrolls(true);
 
+        jSplitPane1.setBorder(null);
         jSplitPane1.setDividerLocation(220);
         jSplitPane1.setDividerSize(6);
 

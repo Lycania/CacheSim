@@ -45,7 +45,7 @@ public class ScrollViewer_core extends JPanel {
     private final Color regionC     = new Color(238, 225, 241, 120);    // Couleur de la région sélectionné
     private final Color background  = new Color(0xd4d4d4, false);       // Couleur de fond
     private final Color shape       = new Color(0x999999, false);       // Couleur du trait
-    private CacheVisualisator1 linkedCache = null;
+    private CacheVisualisator linkedCache = null;
     
     private final Rect region;
     private boolean drag;
@@ -71,7 +71,7 @@ public class ScrollViewer_core extends JPanel {
         });
     }
     
-    public void linkTo(CacheVisualisator1 cV) {
+    public void linkTo(CacheVisualisator cV) {
         linkedCache = cV;
         
         // modification de la liste des rectangles pour la rendre compatible

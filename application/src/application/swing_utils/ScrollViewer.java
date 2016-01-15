@@ -57,7 +57,7 @@ public class ScrollViewer extends javax.swing.JPanel {
         scrollViewer_core1.update();
     }
     
-    public void linkTo(CacheVisualisator1 cV) {
+    public void linkTo(CacheVisualisator cV) {
         scrollViewer_core1.linkTo(cV);
     }
 
@@ -77,13 +77,15 @@ public class ScrollViewer extends javax.swing.JPanel {
         setMaximumSize(new java.awt.Dimension(16, 2147483647));
         setMinimumSize(new java.awt.Dimension(16, 22));
         setPreferredSize(new java.awt.Dimension(16, 300));
+        setVerifyInputWhenFocusTarget(false);
 
+        jScrollPane1.setBorder(null);
         jScrollPane1.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         jScrollPane1.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         jScrollPane1.setMinimumSize(new java.awt.Dimension(16, 7));
         jScrollPane1.setPreferredSize(new java.awt.Dimension(16, 100));
 
-        jPanel1.setLayout(new java.awt.GridLayout());
+        jPanel1.setLayout(new java.awt.GridLayout(1, 0));
 
         scrollViewer_core1.setMinimumSize(new java.awt.Dimension(16, 0));
 
@@ -95,7 +97,7 @@ public class ScrollViewer extends javax.swing.JPanel {
         );
         scrollViewer_core1Layout.setVerticalGroup(
             scrollViewer_core1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 297, Short.MAX_VALUE)
+            .addGap(0, 300, Short.MAX_VALUE)
         );
 
         jPanel1.add(scrollViewer_core1);
