@@ -17,12 +17,8 @@
  */
 package cache;
 
-import cache.Block;
-import cache.Cache;
-import cache.ICache;
-import cache.IIO;
-import cache.Ram;
 import cache.exception.AddressNotAlignedException;
+import cache.scheduler.SchedulerType;
 import cache.type.Format;
 import cache.type.PolicyType;
 import cache.type.Type;
@@ -258,5 +254,10 @@ public class Layer implements IIO, ICache{
     @Override
     public Format getFormat() {
         return selected.getFormat();
+    }
+
+    @Override
+    public SchedulerType getScheduler() {
+        return selected.getScheduler();
     }
 }
