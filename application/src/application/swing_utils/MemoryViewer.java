@@ -34,7 +34,6 @@ public class MemoryViewer extends javax.swing.JPanel {
     }
     
     public void setCache(Cache c) {
-        System.out.println("instance of c : " + c.getClass().toString());
         cacheVisualisator.setCache(c);
         scrollViewer1.linkTo(cacheVisualisator);
         update();

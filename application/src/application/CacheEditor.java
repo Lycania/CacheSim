@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 leo
+ * Copyright (C) 2016 leoca
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,9 +17,9 @@
  */
 package application;
 
-import Utils.Numbers;
-import application.swing_utils.MemoryViewer;
-import application.swing_utils.MyTabbedPane;
+import application.model.SpinnerPowerOfTwo;
+import application.model.TagTableModel;
+
 import cache.Cache;
 import cache.Controler;
 import cache.DirectMappedCache;
@@ -27,152 +27,244 @@ import cache.FullAssociativeCache;
 import cache.Layer;
 import cache.Ram;
 import cache.SetAssociativeCache;
-import cache.scheduler.Scheduler;
+import cache.scheduler.SchedulerType;
 import cache.type.PolicyType;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.JTabbedPane;
+import javax.swing.UIManager;
 
 /**
  *
  * @author leo
  */
 public class CacheEditor extends javax.swing.JFrame {
-    private int jSlider1CurrentValue = 32;
-    private int jSlider2CurrentValue = 4;
-    private int jSlider3CurrentValue = 4;
-    private MemoryViewer connected;
-    private JTabbedPane currentLayer;
-    private final CacheSimulator master;
+    //private final CacheSimulator master;
     
-    // Variable pour le binding
-    private String      formatS, policyS, typeS, schedulerS;
-    private PolicyType  policy;
-    int                 scheduler;
-    cache.type.Type     type;
-    MemoryViewer        view;
+    private String formatValue;
+    private String policyValue;
+    private String typeValue;
+    private String schedulerValue;
+    private String layerValue;
+    
+    private int nbBlock;
+    private int blockSize;
+    private int nbSet;
+    
+    private PolicyType policy;
+    cache.type.Type    type;
+    SchedulerType      scheduler;
+    
+    Cache L1Cache = null;
+    Cache L2Cache = null;
+    Cache L3Cache = null;
+    Cache currentCache = null;
+    
+    Boolean triggerStateChange = true;
+    
+    //private final CacheSimulator master;
+            
 
     /**
-     * Creates new form CacheEditor
-     * @param master
+     * Creates new form CacheEditor2
      */
-    public CacheEditor(CacheSimulator master) {
-        this.master = master;
+    public CacheEditor() {
+        //this.master = master;
         
         initComponents();
-        initProperties();
-        initTabbedPane();
+        initCacheInfo();
+        initCache();
         
-//        cacheVisualisator1.setCache(new FullyAssociativeCache(cache.type.Type.DATA, Scheduler.FIFO, PolicyType.DIRECT, 16, 4, 4));
-//        scrollViewer2.linkTo(cacheVisualisator1);
-    }
-    
-    private void initProperties() {
-        // liaison avec leur panel
-        collapse1.linkTo(collapsePanel1);
-        collapse2.linkTo(collapsePanel2);
-        
-        collapse1.setTitle("Properties");
-        collapse2.setTitle("size");
-    }
-    
-    private void initTabbedPane() {
-        // Ajouter un layer
-        // Génération du memoryViewer avec les propriété donné par l'utilisateur
-        MemoryViewer v = generate();
-        connected = v;
-        
-        // Création du composant pour le nouveau layer
-        MyTabbedPane subPane = createSubTabbedPane();
-        
-        // insertion
-        String name = "L" + (layersTabbedPane.insideSize() + 1);
-        layersTabbedPane.add(name, subPane);
-        labelInfo.setText("ajouter avec succès");
-        labelInfo.setForeground(Color.black);
-    }
-    
-    private MyTabbedPane createSubTabbedPane() {
-        final MyTabbedPane out = new MyTabbedPane();
-        
-        out.addMouseListener(new MouseAdapter() {
-
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                connected = (MemoryViewer) out.getComponentAt(out.getSelectedIndex());
-                
-                jTextField1.setText(Integer.toString(connected.getCache().size()));
-                jTextField2.setText(Integer.toString(connected.getCache().getBlockSize()));
-            }
+        nbSetSpinner.setEnabled(false);
+        setLabel.setEnabled(false);
             
-        });
-        
-        return out;
+        refresh();
     }
     
-    private MemoryViewer generate() {
-        // Récupération de tout les attribus du cache
-        getProperties();
-        
-        // Création du cache et mise à jour de l'affichage 
-        Cache toConnect = generateCache();
-        view = new MemoryViewer();
-        view.setCache(toConnect);
-        connected = view;
-        
-        return view;
+    private void initCache() {
+        L1Cache = generateCache();
+        L2Cache = generateCache();
+        L3Cache = generateCache();
+        currentCache = L1Cache;
     }
     
-    private Cache generateCache() {
+    private void getCacheInfo() {
         // Récupération de tout les attribus du cache
-        getProperties();
+        formatValue     = formatCombo.getSelectedItem().toString();
+        policyValue     = policyCombo.getSelectedItem().toString();
+        typeValue       = typeCombo.getSelectedItem().toString();
+        schedulerValue  = schedulerCombo.getSelectedItem().toString();
+        layerValue      = layerCombo.getSelectedItem().toString();
         
-        Cache c;
-        // Création du cache et mise à jour de l'affichage 
-        if (formatS.equals("Direct mapped cache"))
-            c = new DirectMappedCache(
-                    type, policy, jSlider1CurrentValue, 
-                    jSlider2CurrentValue, 4);
-        else if (formatS.equals("Fully associative cache"))
-            c = new FullAssociativeCache(type, scheduler, policy,
-                    jSlider1CurrentValue, jSlider2CurrentValue, 4);
-        else
-            c = new SetAssociativeCache(type, scheduler, policy,
-                    jSlider1CurrentValue, jSlider3CurrentValue, jSlider2CurrentValue, 4);
+        nbBlock         = (int) nbBlockSpinner.getValue();
+        blockSize       = (int) blockSizeSpinner.getValue();
+        nbSet           = (int) nbSetSpinner.getValue();
         
-        return c;
-    }
-    
-    private void getProperties() {
-        // Récupération de tout les attribus du cache
-        formatS = formatCombo.getSelectedItem().toString();
-        policyS = policyCombo.getSelectedItem().toString();
-        typeS   = typeCombo.getSelectedItem().toString();
-        schedulerS = schedulerCombo.getSelectedItem().toString();
-
-        
-        if (policyS.equals("Direct write")) policy = PolicyType.DIRECT;
+        if (policyValue.equals("Direct write")) policy = PolicyType.DIRECT;
         else policy = PolicyType.DELAYED;
          
-        if      (typeS.equals("Data")) type = cache.type.Type.DATA;
-        else if (typeS.equals("Instruction")) type = cache.type.Type.INSTRUCTION;
-        else    type = cache.type.Type.UNITED;
+        switch (typeValue) {
+            case "Data":        type = cache.type.Type.DATA; break;
+            case "Instruction": type = cache.type.Type.INSTRUCTION; break;
+            case "Both":        type = cache.type.Type.UNITED; break;
+            default:            type = cache.type.Type.DATA; break;
+        }
         
-        if (schedulerS.equals("FIFO")) scheduler = Scheduler.FIFO;
-        else if (schedulerS.equals("LIFO")) scheduler = Scheduler.LIFO;
-        else if (schedulerS.equals("LRU")) scheduler = Scheduler.LRU;
-        else if (schedulerS.equals("LFU")) scheduler = Scheduler.LFU;
-        else if (schedulerS.equals("NMRU")) scheduler = Scheduler.NMRU;
-        else scheduler = Scheduler.RANDOM;
+        switch (schedulerValue) {
+            case "FIFO": scheduler = SchedulerType.FIFO; break;
+            case "LIFO": scheduler = SchedulerType.LIFO; break;
+            case "LRU":  scheduler = SchedulerType.LRU;  break;
+            case "LFU":  scheduler = SchedulerType.LFU;  break;
+            case "NMRU": scheduler = SchedulerType.NMRU; break;
+            default:     scheduler = SchedulerType.RANDOM; break;
+        }
+    }
+    
+    private void initCacheInfo() {
+        nbBlockSpinner.setValue(1);
+        blockSizeSpinner.setValue(1);
+        nbSetSpinner.setValue(1);
         
-        jSlider1CurrentValue = Numbers.nearest2Power(Integer.parseInt(jTextField1.getText()));
-        jSlider2CurrentValue = Numbers.nearest2Power(Integer.parseInt(jTextField2.getText()));
-        jSlider3CurrentValue = Numbers.nearest2Power(Integer.parseInt(jTextField3.getText()));
+        formatCombo.setSelectedIndex(0);
+        typeCombo.setSelectedIndex(0);
+        policyCombo.setSelectedIndex(0);
+        schedulerCombo.setSelectedIndex(0);
+    }
+    
+    private void setCacheInfo() {
+        if (currentCache != null) {
+            triggerStateChange = false;
+            nbBlockSpinner.setValue(currentCache.size());
+            blockSizeSpinner.setValue(currentCache.getBlockSize());
+
+            if (currentCache instanceof SetAssociativeCache)
+                nbSetSpinner.setValue(currentCache.size());
+            
+            switch (currentCache.getFormat()) {
+                case DIRECT: formatCombo.setSelectedIndex(0); break;
+                case FULL: formatCombo.setSelectedIndex(1); break;
+                case SET: formatCombo.setSelectedIndex(2); break;
+                default: break;
+            }
+            
+            switch (currentCache.getType()) {
+                case DATA: typeCombo.setSelectedIndex(1); break;
+                case INSTRUCTION: typeCombo.setSelectedIndex(2); break;
+                case UNITED: typeCombo.setSelectedIndex(3);
+                default: break;
+            }
+            
+            switch (currentCache.getPolicy()) {
+                case DIRECT: policyCombo.setSelectedIndex(0); break;
+                case DELAYED: policyCombo.setSelectedIndex(1); break;
+                default: break;
+            }
+            
+            switch (currentCache.getScheduler()) {
+                case FIFO: schedulerCombo.setSelectedIndex(0);
+                case LIFO: schedulerCombo.setSelectedIndex(1);
+                case LRU: schedulerCombo.setSelectedIndex(2);
+                case LFU: schedulerCombo.setSelectedIndex(3);
+                case NMRU: schedulerCombo.setSelectedIndex(4);
+                case RANDOM: schedulerCombo.setSelectedIndex(5);
+                default: break;
+            }
+        }
+        triggerStateChange = true;
+    }
+    
+    private Cache generateCache() {        
+        if (! typeValue.equals("None")) {
+
+            Cache c;
+
+            // Création du cache et mise à jour de l'affichage
+            switch (formatValue) {
+                case "Direct mapped cache":
+                    c = new DirectMappedCache(type, policy, nbBlock, blockSize, 4);
+                    break;
+                
+                case "Fully associative cache":
+                    c = new FullAssociativeCache(type, scheduler, policy, nbBlock,
+                            blockSize, 4);
+                    break;
+                
+                default:
+                    c = new SetAssociativeCache(type, scheduler, policy, nbBlock, nbSet,
+                            blockSize, 4);
+                    break;
+            }
+            
+            return c;
+        }
+        
+        return null;
+    }
+    
+    public void generateControler() {        
+        List<Layer> layers = new ArrayList<>(4);
+        
+        if (L1Cache != null) layers.add(new Layer(L1Cache));
+        if (L2Cache != null) layers.add(new Layer(L2Cache));
+        if (L3Cache != null) layers.add(new Layer(L3Cache));
+        
+        layers.add(new Layer(new Ram(512, 4)));
+        
+         // ---- Création du controleur de cache
+        CacheSimulator.controler = new Controler(layers);
+        //master.refresh();
+    }
+    
+    private String buildSizeMsg(int size) {
+        String start, end;
+        int nb1024Mult = (int) (Math.log(size) / Math.log(1024));
+        
+        start = Integer.toString(size);
+        if (nb1024Mult != 0)
+            start = Integer.toString(size / (nb1024Mult * 1024));
+        
+        end = " o";
+        if (nb1024Mult == 1) end = " Ko";
+        if (nb1024Mult == 2) end = " Mo";
+        if (nb1024Mult == 3) end = " Go";
+        if (nb1024Mult == 4) end = " To";
+        if (nb1024Mult == 5) end = " Po";
+        
+        return start + end;
+    }
+    
+    private void generate() {
+        setInfo("Récupération des informations du cache", Color.blue);
+        getCacheInfo();
+        setInfo("Génération du cache", Color.blue);
+        currentCache = generateCache();
+        setInfo("Génération du controller", Color.blue);
+        generateControler();
+        setInfo("Controleur de cache créer avec succès", Color.green);
+        
+        switch (layerValue) {
+            case "L1" : L1Cache = currentCache; break;
+            case "L2" : L2Cache = currentCache; break;
+            default   : L3Cache = currentCache; break;
+        }
+        
+    }
+    
+    private void refresh() {
+        if (currentCache != null) {
+            view.setCache(currentCache);
+
+            String sizeMsg = buildSizeMsg(nbBlock * blockSize * 4);
+
+            labelCacheLayerInfo.setText("cache de niveau " + this.layerValue);
+            labelCacheTypeInfo.setText(this.typeValue);
+            labelCacheInfoSize.setText(sizeMsg);
+        }
+    }
+    
+    private void setInfo(String msg, Color color) {
+        labelInfo.setText(msg);
+        labelInfo.setForeground(color);
     }
 
     /**
@@ -183,140 +275,108 @@ public class CacheEditor extends javax.swing.JFrame {
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-        java.awt.GridBagConstraints gridBagConstraints;
 
-        jSplitPane1 = new javax.swing.JSplitPane();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        jPanel11 = new javax.swing.JPanel();
-        collapse1 = new application.swing_utils.CollapsePanel();
-        collapse2 = new application.swing_utils.CollapsePanel();
-        collapsePanel1 = new javax.swing.JPanel();
-        jLabel5 = new javax.swing.JLabel();
-        jLabel8 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
-        jLabel10 = new javax.swing.JLabel();
-        schedulerCombo = new javax.swing.JComboBox();
-        typeCombo = new javax.swing.JComboBox();
-        policyCombo = new javax.swing.JComboBox();
-        formatCombo = new javax.swing.JComboBox();
-        jPanel4 = new javax.swing.JPanel();
-        collapsePanel2 = new javax.swing.JPanel();
-        jLabel11 = new javax.swing.JLabel();
-        jLabel12 = new javax.swing.JLabel();
-        jTextField1 = new javax.swing.JTextField();
-        jTextField2 = new javax.swing.JTextField();
-        jPanel2 = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        jTextField3 = new javax.swing.JTextField();
-        jPanel13 = new javax.swing.JPanel();
-        jButton1 = new javax.swing.JButton();
-        jButton3 = new javax.swing.JButton();
-        jButton4 = new javax.swing.JButton();
+        buttonGroup1 = new javax.swing.ButtonGroup();
+        jPanel5 = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
         infoPanel = new javax.swing.JPanel();
+        labelCacheLayerInfo = new javax.swing.JLabel();
+        labelCacheTypeInfo = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        labelCacheInfoSize = new javax.swing.JLabel();
+        jPanel4 = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        setLabel = new javax.swing.JLabel();
+        formatCombo = new javax.swing.JComboBox();
+        policyCombo = new javax.swing.JComboBox();
+        typeCombo = new javax.swing.JComboBox();
+        schedulerCombo = new javax.swing.JComboBox();
+        nbBlockSpinner = new javax.swing.JSpinner(new SpinnerPowerOfTwo());
+        blockSizeSpinner = new javax.swing.JSpinner(new SpinnerPowerOfTwo());
+        nbSetSpinner = new javax.swing.JSpinner(new SpinnerPowerOfTwo());
+        jPanel2 = new javax.swing.JPanel();
+        jPanel3 = new javax.swing.JPanel();
+        jLabel9 = new javax.swing.JLabel();
+        layerCombo = new javax.swing.JComboBox<>();
+        buttonHexMethod = new javax.swing.JButton();
+        buttonBinMethod = new javax.swing.JButton();
+        buttonDecMethod = new javax.swing.JButton();
+        jToggleButton1 = new javax.swing.JToggleButton();
+        jLabel1 = new javax.swing.JLabel();
+        view = new application.swing_utils.MemoryViewer();
+        pannelInfo = new javax.swing.JPanel();
         labelInfo = new javax.swing.JLabel();
-        layersTabbedPane = new application.swing_utils.MyDragableTabbedPane();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setBackground(new java.awt.Color(225, 225, 225));
 
-        jSplitPane1.setDividerLocation(200);
-        jSplitPane1.setDividerSize(8);
+        jPanel5.setLayout(new java.awt.BorderLayout());
 
-        jScrollPane1.setBorder(null);
-        jScrollPane1.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        jPanel1.setBackground(new java.awt.Color(225, 225, 225));
 
-        jPanel11.setMinimumSize(new java.awt.Dimension(100, 48));
-        jPanel11.setLayout(new java.awt.GridBagLayout());
+        infoPanel.setBackground(new java.awt.Color(225, 225, 225));
+        infoPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)));
 
-        collapse1.setMinimumSize(new java.awt.Dimension(10, 24));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.FIRST_LINE_START;
-        gridBagConstraints.weightx = 0.1;
-        jPanel11.add(collapse1, gridBagConstraints);
+        labelCacheLayerInfo.setText("Cache de niveau L1");
 
-        collapse2.setMinimumSize(new java.awt.Dimension(10, 24));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.FIRST_LINE_START;
-        gridBagConstraints.weightx = 0.1;
-        jPanel11.add(collapse2, gridBagConstraints);
+        labelCacheTypeInfo.setText("jLabel11");
 
-        collapsePanel1.setMinimumSize(new java.awt.Dimension(10, 140));
-        collapsePanel1.setPreferredSize(new java.awt.Dimension(100, 140));
-        collapsePanel1.setLayout(new java.awt.GridBagLayout());
+        jLabel8.setText("Size");
 
-        jLabel5.setText("Format ");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(6, 6, 0, 0);
-        collapsePanel1.add(jLabel5, gridBagConstraints);
+        labelCacheInfoSize.setText("jLabel10");
 
-        jLabel8.setText("Policy");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 6, 0, 0);
-        collapsePanel1.add(jLabel8, gridBagConstraints);
+        javax.swing.GroupLayout infoPanelLayout = new javax.swing.GroupLayout(infoPanel);
+        infoPanel.setLayout(infoPanelLayout);
+        infoPanelLayout.setHorizontalGroup(
+            infoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(infoPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(infoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(infoPanelLayout.createSequentialGroup()
+                        .addComponent(labelCacheLayerInfo)
+                        .addGap(18, 18, 18)
+                        .addComponent(labelCacheTypeInfo, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(infoPanelLayout.createSequentialGroup()
+                        .addComponent(jLabel8)
+                        .addGap(18, 18, 18)
+                        .addComponent(labelCacheInfoSize)
+                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addContainerGap())
+        );
+        infoPanelLayout.setVerticalGroup(
+            infoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(infoPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(infoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(labelCacheLayerInfo)
+                    .addComponent(labelCacheTypeInfo))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(infoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel8)
+                    .addComponent(labelCacheInfoSize))
+                .addContainerGap(90, Short.MAX_VALUE))
+        );
 
-        jLabel9.setText("Type");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 6, 0, 0);
-        collapsePanel1.add(jLabel9, gridBagConstraints);
+        jPanel4.setBackground(new java.awt.Color(225, 225, 225));
 
-        jLabel10.setText("Scheduleur");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 6, 0, 12);
-        collapsePanel1.add(jLabel10, gridBagConstraints);
+        jLabel2.setText("Format");
 
-        schedulerCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "FIFO", "LIFO", "LRU", "LFU", "NMRU", "RANDOM" }));
-        schedulerCombo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                schedulerComboActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(7, 0, 0, 0);
-        collapsePanel1.add(schedulerCombo, gridBagConstraints);
+        jLabel3.setText("Policy");
 
-        typeCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Data", "Instruction", "United" }));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(7, 0, 0, 0);
-        collapsePanel1.add(typeCombo, gridBagConstraints);
+        jLabel4.setText("Type");
 
-        policyCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Direct write", "delayed write" }));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(6, 0, 0, 0);
-        collapsePanel1.add(policyCombo, gridBagConstraints);
+        jLabel5.setText("Scheduler");
+
+        jLabel6.setText("Number block");
+
+        jLabel7.setText("block's size");
+
+        setLabel.setText("set count");
 
         formatCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Direct mapped cache", "Fully associative cache", "Set associative cache" }));
         formatCombo.setMinimumSize(new java.awt.Dimension(100, 23));
@@ -325,482 +385,416 @@ public class CacheEditor extends javax.swing.JFrame {
                 formatComboItemStateChanged(evt);
             }
         });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(6, 0, 0, 0);
-        collapsePanel1.add(formatCombo, gridBagConstraints);
+
+        policyCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Direct write", "delayed write" }));
+        policyCombo.setMinimumSize(new java.awt.Dimension(100, 23));
+        policyCombo.setPreferredSize(new java.awt.Dimension(134, 20));
+        policyCombo.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                policyComboItemStateChanged(evt);
+            }
+        });
+
+        typeCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "None", "Data", "Instruction", "United" }));
+        typeCombo.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                typeComboItemStateChanged(evt);
+            }
+        });
+
+        schedulerCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "FIFO", "LIFO", "LRU", "LFU", "NMRU", "RANDOM" }));
+        schedulerCombo.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                schedulerComboItemStateChanged(evt);
+            }
+        });
+
+        nbBlockSpinner.setValue(1);
+        nbBlockSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                nbBlockSpinnerStateChanged(evt);
+            }
+        });
+
+        blockSizeSpinner.setValue(1);
+        blockSizeSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                blockSizeSpinnerStateChanged(evt);
+            }
+        });
+
+        nbSetSpinner.setValue(2);
+        nbSetSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                nbSetSpinnerStateChanged(evt);
+            }
+        });
+        nbSetSpinner.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                nbSetSpinnerMouseClicked(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
         jPanel4Layout.setHorizontalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel4Layout.createSequentialGroup()
+                        .addComponent(jLabel2)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(formatCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel4Layout.createSequentialGroup()
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel4)
+                            .addComponent(jLabel5)
+                            .addComponent(jLabel6)
+                            .addComponent(jLabel7)
+                            .addComponent(setLabel)
+                            .addComponent(jLabel3))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel4Layout.createSequentialGroup()
+                                .addGap(0, 0, Short.MAX_VALUE)
+                                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(policyCombo, 0, 1, Short.MAX_VALUE)
+                                    .addComponent(typeCombo, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(schedulerCombo, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(nbBlockSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(blockSizeSpinner, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(nbSetSpinner, javax.swing.GroupLayout.Alignment.TRAILING))))
+                .addContainerGap())
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(formatCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3)
+                    .addComponent(policyCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(typeCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel5)
+                    .addComponent(schedulerCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(38, 38, 38)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel6)
+                    .addComponent(nbBlockSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(blockSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(setLabel)
+                    .addComponent(nbSetSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
 
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.weightx = 0.1;
-        collapsePanel1.add(jPanel4, gridBagConstraints);
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(infoPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(8, 8, 8)
+                .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
+                .addComponent(infoPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.FIRST_LINE_START;
-        gridBagConstraints.weightx = 0.1;
-        jPanel11.add(collapsePanel1, gridBagConstraints);
+        jPanel5.add(jPanel1, java.awt.BorderLayout.LINE_START);
 
-        collapsePanel2.setMinimumSize(new java.awt.Dimension(10, 74));
-        collapsePanel2.setPreferredSize(new java.awt.Dimension(100, 74));
-        java.awt.GridBagLayout collapsePanel2Layout = new java.awt.GridBagLayout();
-        collapsePanel2Layout.rowHeights = new int[] {0};
-        collapsePanel2Layout.rowWeights = new double[] {0.0};
-        collapsePanel2.setLayout(collapsePanel2Layout);
+        jPanel2.setBackground(new java.awt.Color(225, 225, 225));
+        jPanel2.setLayout(new java.awt.BorderLayout());
 
-        jLabel11.setText("block's size");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
-        gridBagConstraints.insets = new java.awt.Insets(4, 0, 4, 0);
-        collapsePanel2.add(jLabel11, gridBagConstraints);
+        jPanel3.setBackground(new java.awt.Color(225, 225, 225));
 
-        jLabel12.setText("number of block");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
-        gridBagConstraints.insets = new java.awt.Insets(6, 0, 6, 13);
-        collapsePanel2.add(jLabel12, gridBagConstraints);
+        jLabel9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel9.setText("Layer");
 
-        jTextField1.setText("32");
-        jTextField1.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                jTextField1KeyPressed(evt);
+        layerCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "L1", "L2", "L3" }));
+        layerCombo.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                layerComboItemStateChanged(evt);
             }
         });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        gridBagConstraints.weightx = 0.1;
-        collapsePanel2.add(jTextField1, gridBagConstraints);
 
-        jTextField2.setText("4");
-        jTextField2.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                jTextField2KeyPressed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        collapsePanel2.add(jTextField2, gridBagConstraints);
-
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-        );
-
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
-        collapsePanel2.add(jPanel2, gridBagConstraints);
-
-        jLabel1.setText("set count");
-        jLabel1.setEnabled(false);
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(8, 0, 8, 0);
-        collapsePanel2.add(jLabel1, gridBagConstraints);
-
-        jTextField3.setText("2");
-        jTextField3.setEnabled(false);
-        jTextField3.addActionListener(new java.awt.event.ActionListener() {
+        buttonHexMethod.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/hexa.png"))); // NOI18N
+        buttonGroup1.add(buttonHexMethod);
+        buttonHexMethod.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextField3ActionPerformed(evt);
+                buttonHexMethodActionPerformed(evt);
             }
         });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        collapsePanel2.add(jTextField3, gridBagConstraints);
 
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.FIRST_LINE_START;
-        gridBagConstraints.weightx = 0.1;
-        jPanel11.add(collapsePanel2, gridBagConstraints);
-
-        jPanel13.setMinimumSize(new java.awt.Dimension(10, 48));
-        jPanel13.setPreferredSize(new java.awt.Dimension(100, 48));
-        jPanel13.setLayout(new java.awt.GridBagLayout());
-
-        jButton1.setText("Sauvegarder");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        buttonBinMethod.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/Bina.png"))); // NOI18N
+        buttonGroup1.add(buttonBinMethod);
+        buttonBinMethod.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                buttonBinMethodActionPerformed(evt);
             }
         });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTH;
-        gridBagConstraints.weightx = 0.1;
-        jPanel13.add(jButton1, gridBagConstraints);
 
-        jButton3.setText("new layers");
-        jButton3.addActionListener(new java.awt.event.ActionListener() {
+        buttonDecMethod.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/deci.png"))); // NOI18N
+        buttonGroup1.add(buttonDecMethod);
+        buttonDecMethod.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton3ActionPerformed(evt);
+                buttonDecMethodActionPerformed(evt);
             }
         });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
-        jPanel13.add(jButton3, gridBagConstraints);
 
-        jButton4.setText("new cache");
-        jButton4.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton4ActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
-        jPanel13.add(jButton4, gridBagConstraints);
+        jToggleButton1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/resources/toggleText.png"))); // NOI18N
 
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LAST_LINE_START;
-        gridBagConstraints.weightx = 0.1;
-        gridBagConstraints.weighty = 0.1;
-        jPanel11.add(jPanel13, gridBagConstraints);
+        jLabel1.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+        jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel1.setText("Properties");
 
-        jScrollPane1.setViewportView(jPanel11);
-
-        jSplitPane1.setLeftComponent(jScrollPane1);
-
-        jPanel1.setLayout(new java.awt.BorderLayout());
-
-        infoPanel.setMaximumSize(new java.awt.Dimension(32767, 24));
-        infoPanel.setMinimumSize(new java.awt.Dimension(100, 24));
-        infoPanel.setPreferredSize(new java.awt.Dimension(961, 24));
-        infoPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
-
-        labelInfo.setText("jLabel1");
-        infoPanel.add(labelInfo);
-
-        jPanel1.add(infoPanel, java.awt.BorderLayout.PAGE_END);
-
-        layersTabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                layersTabbedPaneMouseClicked(evt);
-            }
-        });
-        jPanel1.add(layersTabbedPane, java.awt.BorderLayout.CENTER);
-
-        jSplitPane1.setRightComponent(jPanel1);
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jSplitPane1)
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGap(1, 1, 1)
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 214, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(layerCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 383, Short.MAX_VALUE)
+                .addComponent(buttonHexMethod)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(buttonBinMethod)
+                .addGap(2, 2, 2)
+                .addComponent(buttonDecMethod)
+                .addGap(50, 50, 50)
+                .addComponent(jToggleButton1))
         );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jSplitPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(layerCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jToggleButton1)
+                            .addComponent(buttonDecMethod)
+                            .addComponent(buttonBinMethod)
+                            .addComponent(buttonHexMethod))
+                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addGap(0, 0, Short.MAX_VALUE))
         );
+
+        jPanel2.add(jPanel3, java.awt.BorderLayout.PAGE_START);
+
+        jPanel5.add(jPanel2, java.awt.BorderLayout.PAGE_START);
+        jPanel5.add(view, java.awt.BorderLayout.CENTER);
+
+        pannelInfo.setBackground(new java.awt.Color(225, 225, 225));
+        pannelInfo.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(208, 208, 208)));
+        pannelInfo.setMinimumSize(new java.awt.Dimension(100, 24));
+        pannelInfo.setName(""); // NOI18N
+        pannelInfo.setPreferredSize(new java.awt.Dimension(942, 24));
+
+        labelInfo.setText("jLabel8");
+
+        javax.swing.GroupLayout pannelInfoLayout = new javax.swing.GroupLayout(pannelInfo);
+        pannelInfo.setLayout(pannelInfoLayout);
+        pannelInfoLayout.setHorizontalGroup(
+            pannelInfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pannelInfoLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(labelInfo, javax.swing.GroupLayout.DEFAULT_SIZE, 1015, Short.MAX_VALUE))
+        );
+        pannelInfoLayout.setVerticalGroup(
+            pannelInfoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(labelInfo, javax.swing.GroupLayout.DEFAULT_SIZE, 22, Short.MAX_VALUE)
+        );
+
+        jPanel5.add(pannelInfo, java.awt.BorderLayout.PAGE_END);
+        pannelInfo.getAccessibleContext().setAccessibleName("");
+
+        getContentPane().add(jPanel5, java.awt.BorderLayout.CENTER);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    public void generateControler() {
-        List<Layer> layers = new ArrayList<>(layersTabbedPane.insideSize());
-        
-        // On va parcourir l'ensemble de nos layers pour en récupérer le contenu
-        for (int i = 0; i < layersTabbedPane.getTabCount(); ++i) {
-            MyTabbedPane subPane = (MyTabbedPane) layersTabbedPane.getComponentAt(i);
-            
-            switch (subPane.getTabCount()) {
-                // Aucun cache dans un layer ? Erreur de conception
-                case 0: 
-                    labelInfo.setText("Il est impossible de posséder un " +
-                            "niveau de cache sans aucun cache dedans ! ");
-                    labelInfo.setForeground(Color.red);
-                    return;
-                
-                case 1:
-                    layers.add(new Layer(((MemoryViewer) subPane.getComponentAt(0)).getCache()));
-                    break;
-                    
-                case 2:
-                    Cache c1 = ((MemoryViewer) subPane.getComponentAt(0)).getCache();
-                    Cache c2 = ((MemoryViewer) subPane.getComponentAt(1)).getCache();
-                    
-                    if (c1.getType() == cache.type.Type.DATA)
-                        layers.add(new Layer(c1, c2));
-                    else 
-                        layers.add(new Layer(c2, c1));
-            }
-        }
-        
-        // Ajout d'une ram pour défaut
-        layers.add(new Layer(new Ram(512, 4)));
-        
-        // ---- Création du controleur de cache
-        CacheSimulator.controler = new Controler(layers);
-        master.refresh();
-        labelInfo.setText("controler de cache créer avec succès");
-        labelInfo.setForeground(Color.black);
-    }
-    
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        generateControler();
-    }//GEN-LAST:event_jButton1ActionPerformed
-
-    private void jTextField2KeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField2KeyPressed
-        switch (evt.getKeyCode()) {
-            case KeyEvent.VK_ENTER:
-            try {
-                jSlider2CurrentValue = Numbers.nearest2Power(Integer.parseInt(jTextField2.getText()));
-                jTextField2.setText(Integer.toString(jSlider2CurrentValue));
-                jTextField2.setBackground(Color.GREEN);
-                
-                // On modifie les informations du cache qui est connecté
-                connected.setCache(generateCache());
-
-        } catch (NumberFormatException e) {
-            jTextField2.setText("un nombre !");
-            jTextField2.setBackground(Color.RED);
-        }
-        default: break;
-        }
-    }//GEN-LAST:event_jTextField2KeyPressed
-
-    private void jTextField1KeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jTextField1KeyPressed
-        switch (evt.getKeyCode()) {
-            case KeyEvent.VK_ENTER:
-            try {
-                jSlider1CurrentValue = Numbers.nearest2Power(Integer.parseInt(jTextField1.getText()));
-                jTextField1.setText(Integer.toString(jSlider1CurrentValue));
-                jTextField1.setBackground(Color.GREEN);
-
-                connected.setCache(generateCache());
-
-        } catch (NumberFormatException e) {
-            jTextField1.setText("un nombre !");
-            jTextField1.setBackground(Color.RED);
-        }
-        default: break;
-        }
-    }//GEN-LAST:event_jTextField1KeyPressed
-
-    private void schedulerComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_schedulerComboActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_schedulerComboActionPerformed
-
-    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
-        String title = "";
-        
-        // Ajouter un cache au layers courant
-        final int layer = layersTabbedPane.getSelectedIndex();
-        final MyTabbedPane subPane = (MyTabbedPane) layersTabbedPane.getComponentAt(layer);
-        
-        // Génération du memoryViewer avec les propriété donné par l'utilisateur
-        MemoryViewer view = generate();
-        cache.type.Type toAdd = view.getCache().getType();
-        connected = view;
-        
-        System.out.println(subPane.getComponentCount());
-        
-        // insertion du cache en fonction.
-        // Si déjà présent : data. On ajouter un Instruction et vise-versa
-        // Si united, impossible
-        if (subPane.getTabCount() == 1) {
-            for (Component c : subPane.getComponents()) {
-                System.out.println(c.getClass().toString());
-            }
-            cache.type.Type alreadyUsed = ((MemoryViewer) subPane.getComponentAt(0)).getCache().getType();
-            
-            if (alreadyUsed == toAdd  || alreadyUsed == cache.type.Type.UNITED) {
-                labelInfo.setText("Impossible de rajouter ce cache car il" +
-                        " existe déja.");
-                labelInfo.setForeground(Color.red);
-                return;
-            }
-            
-            else {
-                if (toAdd == cache.type.Type.UNITED) return;
-                else if (toAdd == cache.type.Type.INSTRUCTION) title = "Instruction";
-                else if (toAdd == cache.type.Type.DATA) title = "Data";
-            }
-        }
-        
-        // SI il n'y a aucun cache
-        if (subPane.getTabCount() == 0) {
-            if (toAdd == cache.type.Type.DATA) title = "Data";
-            else if (toAdd == cache.type.Type.INSTRUCTION) title = "Instruction";
-            else if (toAdd == cache.type.Type.UNITED) title = "United";
-        }
-        
-        // SI il y a déja deux cache, impossible d'en rajouter un.
-        if (subPane.getTabCount() == 2) {
-            labelInfo.setText("Impossible d'avoir plus de deux cache dans le " +
-                    "même niveau.");
-            labelInfo.setForeground(Color.red);
-            return;
-        }
-        
-        subPane.add(title, view);
-        subPane.setSelectedIndex(subPane.indexOfComponent(connected));
-        labelInfo.setText("ajouter avec succès");
-        labelInfo.setForeground(Color.black);
-    }//GEN-LAST:event_jButton4ActionPerformed
-
-    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        // Ajouter un layer
-        // Génération du memoryViewer avec les propriété donné par l'utilisateur
-        MemoryViewer view = generate();
-        connected = view;
-        
-        // Création du composant pour le nouveau layer
-        MyTabbedPane subPane = createSubTabbedPane();
-        
-        // insertion
-        String name = "L" + (layersTabbedPane.insideSize() + 1);
-        layersTabbedPane.add(name, subPane);
-        labelInfo.setText("ajouter avec succès");
-        labelInfo.setForeground(Color.black);
-    }//GEN-LAST:event_jButton3ActionPerformed
-
-    private void layersTabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_layersTabbedPaneMouseClicked
-        System.out.println("event run");
-        currentLayer = (MyTabbedPane) layersTabbedPane.getComponentAt(layersTabbedPane.getSelectedIndex());
-        if (currentLayer.getSelectedIndex() != -1) 
-            connected = (MemoryViewer) currentLayer.getComponentAt(currentLayer.getSelectedIndex());
-    }//GEN-LAST:event_layersTabbedPaneMouseClicked
-
-    private void jTextField3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField3ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jTextField3ActionPerformed
-
+    /* new selection */
     private void formatComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_formatComboItemStateChanged
-        if (formatCombo.getSelectedIndex() == 2) {
-            jLabel1.setEnabled(true);
-            jTextField3.setEnabled(true);
-            
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+        
+        if (! formatValue.equals("Set associative cache")) {
+            nbSetSpinner.setEnabled(false);
+            setLabel.setEnabled(false);
         } else {
-            jLabel1.setEnabled(false);
-            jTextField3.setEnabled(false);
+            nbSetSpinner.setEnabled(true);
+            setLabel.setEnabled(true);
         }
     }//GEN-LAST:event_formatComboItemStateChanged
 
-    
-//    /**
-//     * @param args the command line arguments
-//     */
-//    public static void main(String args[]) {
-//        /* Set the Nimbus look and feel */
-//        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-//        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-//         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-//         */
-//        try {
-//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-//                System.out.println(info.getName());
-//                if ("Metal".equals(info.getName())) {
-//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-////                    break;
-//                }
-//            }
-//        } catch (ClassNotFoundException ex) {
-//            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        } catch (InstantiationException ex) {
-//            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        } catch (IllegalAccessException ex) {
-//            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-//            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        }
-//        //</editor-fold>
-//
-//        /* Create and display the form */
-//        java.awt.EventQueue.invokeLater(new Runnable() {
-//            public void run() {
-//                new CacheEditor().setVisible(true);
-//            }
-//        });
-//    }
+    private void policyComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_policyComboItemStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }        
+    }//GEN-LAST:event_policyComboItemStateChanged
+
+    private void typeComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_typeComboItemStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_typeComboItemStateChanged
+
+    private void schedulerComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_schedulerComboItemStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_schedulerComboItemStateChanged
+
+    private void nbSetSpinnerMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_nbSetSpinnerMouseClicked
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_nbSetSpinnerMouseClicked
+
+    private void blockSizeSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_blockSizeSpinnerStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_blockSizeSpinnerStateChanged
+
+    private void nbSetSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_nbSetSpinnerStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_nbSetSpinnerStateChanged
+
+    private void buttonDecMethodActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonDecMethodActionPerformed
+        view.changeMethod(TagTableModel.Method.DEC);
+    }//GEN-LAST:event_buttonDecMethodActionPerformed
+
+    private void buttonBinMethodActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonBinMethodActionPerformed
+        view.changeMethod(TagTableModel.Method.BIN);
+    }//GEN-LAST:event_buttonBinMethodActionPerformed
+
+    private void buttonHexMethodActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonHexMethodActionPerformed
+        view.changeMethod(TagTableModel.Method.HEXA);
+    }//GEN-LAST:event_buttonHexMethodActionPerformed
+
+    private void layerComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_layerComboItemStateChanged
+        layerValue = layerCombo.getSelectedItem().toString();
+        
+        switch (layerValue) {
+            case "L1" : currentCache = L1Cache; System.out.println("L1"); break;
+            case "L2" : currentCache = L2Cache; System.out.println("L2"); break;
+            default   : currentCache = L3Cache; System.out.println("L3");break;
+        }
+        refresh();
+        setCacheInfo();
+    }//GEN-LAST:event_layerComboItemStateChanged
+
+    private void nbBlockSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_nbBlockSpinnerStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_nbBlockSpinnerStateChanged
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(CacheEditor.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+
+
+        /* Create and display the form */
+        
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new CacheEditor().setVisible(true);
+            }
+        });
+        
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private application.swing_utils.CollapsePanel collapse1;
-    private application.swing_utils.CollapsePanel collapse2;
-    private javax.swing.JPanel collapsePanel1;
-    private javax.swing.JPanel collapsePanel2;
+    private javax.swing.JSpinner blockSizeSpinner;
+    private javax.swing.JButton buttonBinMethod;
+    private javax.swing.JButton buttonDecMethod;
+    private javax.swing.ButtonGroup buttonGroup1;
+    private javax.swing.JButton buttonHexMethod;
     private javax.swing.JComboBox formatCombo;
     private javax.swing.JPanel infoPanel;
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton3;
-    private javax.swing.JButton jButton4;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel12;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel11;
-    private javax.swing.JPanel jPanel13;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JSplitPane jSplitPane1;
-    private javax.swing.JTextField jTextField1;
-    private javax.swing.JTextField jTextField2;
-    private javax.swing.JTextField jTextField3;
+    private javax.swing.JPanel jPanel5;
+    private javax.swing.JToggleButton jToggleButton1;
+    private javax.swing.JLabel labelCacheInfoSize;
+    private javax.swing.JLabel labelCacheLayerInfo;
+    private javax.swing.JLabel labelCacheTypeInfo;
     private javax.swing.JLabel labelInfo;
-    private application.swing_utils.MyDragableTabbedPane layersTabbedPane;
+    private javax.swing.JComboBox<String> layerCombo;
+    private javax.swing.JSpinner nbBlockSpinner;
+    private javax.swing.JSpinner nbSetSpinner;
+    private javax.swing.JPanel pannelInfo;
     private javax.swing.JComboBox policyCombo;
     private javax.swing.JComboBox schedulerCombo;
+    private javax.swing.JLabel setLabel;
     private javax.swing.JComboBox typeCombo;
+    private application.swing_utils.MemoryViewer view;
     // End of variables declaration//GEN-END:variables
 }

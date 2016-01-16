@@ -17,6 +17,7 @@
  */
 package cache.scheduler;
 
+
 /**
  *
  * @author maignial
@@ -27,14 +28,6 @@ public abstract class Scheduler implements IScheduler{
      */
     final int max;
     int current;
-    
-    /* types */
-    public static final int FIFO = 0;
-    public static final int LIFO = 1;
-    public static final int LRU = 2;
-    public static final int NMRU = 3;
-    public static final int RANDOM = 4;
-    public static final int LFU = 5;
     
     
     public Scheduler(int topRange) {

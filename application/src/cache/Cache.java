@@ -21,7 +21,6 @@ import cache.policy.DelayedPolicy;
 import cache.policy.DirectWritePolicy;
 import cache.type.Type;
 import cache.policy.Policy;
-import cache.scheduler.Scheduler;
 import cache.scheduler.SchedulerType;
 import cache.type.PolicyType;
 
@@ -58,7 +57,11 @@ public abstract class Cache implements ICache, IIO {
     
     @Override
     public String toString() {
-        return type.toString();
+        String out = "";
+        out += "type : " + type.toString() + "\n";
+        out += "nb block : " + setCount + "\n";
+        out += "blockSize : " + wordsPerBlock + "\n";
+        return out;
     }
     
     /**
