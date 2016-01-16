@@ -1,7 +1,6 @@
 package application.model;
 
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SpinnerModel;
 
 
 public class SpinnerPowerOfTwo extends SpinnerNumberModel {
@@ -9,7 +8,7 @@ public class SpinnerPowerOfTwo extends SpinnerNumberModel {
     int power ;
 
     public SpinnerPowerOfTwo() {
-        this.power = 1;
+        this.power = 0;
         this.value = (int) 1;
     }
     
@@ -17,7 +16,7 @@ public class SpinnerPowerOfTwo extends SpinnerNumberModel {
     public Object getPreviousValue() {
         --power;
       
-        if (power < 0) power = 1;
+        if (power < 0) power = 0;
         return (int) Math.pow(2, power);
     }
 
