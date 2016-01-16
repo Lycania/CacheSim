@@ -56,7 +56,9 @@ public class CacheEditor2 extends javax.swing.JFrame {
     Cache L1Cache = null;
     Cache L2Cache = null;
     Cache L3Cache = null;
-    Cache currentCache = L1Cache;
+    Cache currentCache = null;
+    
+    Boolean triggerStateChange = true;
     
     //private final CacheSimulator master;
             
@@ -66,7 +68,16 @@ public class CacheEditor2 extends javax.swing.JFrame {
      */
     public CacheEditor2() {
         initComponents();
+        initCacheInfo();
+        initCache();
         refresh();
+    }
+    
+    private void initCache() {
+        L1Cache = generateCache();
+        L2Cache = generateCache();
+        L3Cache = generateCache();
+        currentCache = L1Cache;
     }
     
     private void getCacheInfo() {
@@ -99,12 +110,6 @@ public class CacheEditor2 extends javax.swing.JFrame {
             case "NMRU": scheduler = SchedulerType.NMRU; break;
             default:     scheduler = SchedulerType.RANDOM; break;
         }
-        
-        switch (layerValue) {
-            case "L1" : L1Cache = currentCache; break;
-            case "L2" : L2Cache = currentCache; break;
-            default   : L3Cache = currentCache; break;
-        }
     }
     
     private void initCacheInfo() {
@@ -119,46 +124,45 @@ public class CacheEditor2 extends javax.swing.JFrame {
     }
     
     private void setCacheInfo() {
-        nbBlockSpinner.setValue(currentCache.size());
-        blockSizeSpinner.setValue(currentCache.getBlockSize());
-        
-        if (currentCache instanceof SetAssociativeCache)
-            nbSetSpinner.setValue((currentCache.size()));
-        
-        nbBlock         = (int) nbBlockSpinner.getValue();
-        blockSize       = (int) blockSizeSpinner.getValue();
-        nbSet           = (int) nbSetSpinner.getValue();
-        
-        switch (currentCache.getFormat()) {
-            case DIRECT: formatCombo.setSelectedIndex(0); break;
-            case FULL: formatCombo.setSelectedIndex(1); break;
-            case SET: formatCombo.setSelectedIndex(2); break;
-            default: break;
+        if (currentCache != null) {
+            triggerStateChange = false;
+            nbBlockSpinner.setValue(currentCache.size());
+            blockSizeSpinner.setValue(currentCache.getBlockSize());
+
+            if (currentCache instanceof SetAssociativeCache)
+                nbSetSpinner.setValue(currentCache.size());
+            
+            switch (currentCache.getFormat()) {
+                case DIRECT: formatCombo.setSelectedIndex(0); break;
+                case FULL: formatCombo.setSelectedIndex(1); break;
+                case SET: formatCombo.setSelectedIndex(2); break;
+                default: break;
+            }
+            
+            switch (currentCache.getType()) {
+                case DATA: typeCombo.setSelectedIndex(1); break;
+                case INSTRUCTION: typeCombo.setSelectedIndex(2); break;
+                case UNITED: typeCombo.setSelectedIndex(3);
+                default: break;
+            }
+            
+            switch (currentCache.getPolicy()) {
+                case DIRECT: policyCombo.setSelectedIndex(0); break;
+                case DELAYED: policyCombo.setSelectedIndex(1); break;
+                default: break;
+            }
+            
+            switch (currentCache.getScheduler()) {
+                case FIFO: schedulerCombo.setSelectedIndex(0);
+                case LIFO: schedulerCombo.setSelectedIndex(1);
+                case LRU: schedulerCombo.setSelectedIndex(2);
+                case LFU: schedulerCombo.setSelectedIndex(3);
+                case NMRU: schedulerCombo.setSelectedIndex(4);
+                case RANDOM: schedulerCombo.setSelectedIndex(5);
+                default: break;
+            }
         }
-        
-        switch (currentCache.getType()) {
-            case DATA: typeCombo.setSelectedIndex(1); break;
-            case INSTRUCTION: typeCombo.setSelectedIndex(2); break;
-            case UNITED: typeCombo.setSelectedIndex(3);
-            default: break;
-        }
-        
-        switch (currentCache.getPolicy()) {
-            case DIRECT: policyCombo.setSelectedIndex(0); break;
-            case DELAYED: policyCombo.setSelectedIndex(1); break;
-            default: break;
-        }
-        
-        
-        switch (currentCache.getScheduler()) {
-            case FIFO: schedulerCombo.setSelectedIndex(0);
-            case LIFO: schedulerCombo.setSelectedIndex(1);
-            case LRU: schedulerCombo.setSelectedIndex(2);
-            case LFU: schedulerCombo.setSelectedIndex(3);
-            case NMRU: schedulerCombo.setSelectedIndex(4);
-            case RANDOM: schedulerCombo.setSelectedIndex(5);
-            default: break;
-        }
+        triggerStateChange = true;
     }
     
     private Cache generateCache() {        
@@ -220,25 +224,32 @@ public class CacheEditor2 extends javax.swing.JFrame {
         return start + end;
     }
     
-    private void refresh() {
+    private void generate() {
         setInfo("Récupération des informations du cache", Color.blue);
         getCacheInfo();
-        setInfo("Génération des caches", Color.blue);
-        Cache c = generateCache();
-        setInfo("création du controler", Color.blue);
+        setInfo("Génération du cache", Color.blue);
+        currentCache = generateCache();
+        setInfo("Génération du controller", Color.blue);
         generateControler();
-        setInfo("controler de cache créer avec succès", Color.green);
+        setInfo("Controleur de cache créer avec succès", Color.green);
         
-        if (c != null) {
-            view.setCache(c);
-            currentCache = c;
+        switch (layerValue) {
+            case "L1" : L1Cache = currentCache; break;
+            case "L2" : L2Cache = currentCache; break;
+            default   : L3Cache = currentCache; break;
+        }
+        
+    }
+    
+    private void refresh() {
+        if (currentCache != null) {
+            view.setCache(currentCache);
 
             String sizeMsg = buildSizeMsg(nbBlock * blockSize * 4);
 
             labelCacheLayerInfo.setText("cache de niveau " + this.layerValue);
             labelCacheTypeInfo.setText(this.typeValue);
             labelCacheInfoSize.setText(sizeMsg);
-        
         }
     }
     
@@ -400,11 +411,6 @@ public class CacheEditor2 extends javax.swing.JFrame {
         blockSizeSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 blockSizeSpinnerStateChanged(evt);
-            }
-        });
-        blockSizeSpinner.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                blockSizeSpinnerMouseClicked(evt);
             }
         });
 
@@ -625,39 +631,52 @@ public class CacheEditor2 extends javax.swing.JFrame {
 
     /* new selection */
     private void formatComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_formatComboItemStateChanged
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_formatComboItemStateChanged
 
     private void policyComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_policyComboItemStateChanged
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_policyComboItemStateChanged
 
     private void typeComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_typeComboItemStateChanged
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_typeComboItemStateChanged
 
     private void schedulerComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_schedulerComboItemStateChanged
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_schedulerComboItemStateChanged
 
-    private void blockSizeSpinnerMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_blockSizeSpinnerMouseClicked
-        refresh();
-    }//GEN-LAST:event_blockSizeSpinnerMouseClicked
-
     private void nbSetSpinnerMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_nbSetSpinnerMouseClicked
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_nbSetSpinnerMouseClicked
 
-    private void nbBlockSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_nbBlockSpinnerStateChanged
-        refresh();
-    }//GEN-LAST:event_nbBlockSpinnerStateChanged
-
     private void blockSizeSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_blockSizeSpinnerStateChanged
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_blockSizeSpinnerStateChanged
 
     private void nbSetSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_nbSetSpinnerStateChanged
-        refresh();
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
     }//GEN-LAST:event_nbSetSpinnerStateChanged
 
     private void buttonDecMethodActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonDecMethodActionPerformed
@@ -673,41 +692,23 @@ public class CacheEditor2 extends javax.swing.JFrame {
     }//GEN-LAST:event_buttonHexMethodActionPerformed
 
     private void layerComboItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_layerComboItemStateChanged
-        // save the current cache to the layer
-        switch (layerValue) {
-            case "L1":
-                if (L1Cache != null) {
-                    currentCache = L1Cache;
-                    setCacheInfo();
-                    break;
-                } else {
-                    initCacheInfo();
-                }
-                break;
-                
-            case "L2": 
-                if (L2Cache != null) {
-                    currentCache = L2Cache;
-                    setCacheInfo();
-                    break;
-                } else {
-                    initCacheInfo();
-                }
-                break;
-                
-            default: 
-                if (L3Cache != null) {
-                    currentCache = L3Cache;
-                    setCacheInfo();
-                    break;
-                } else {
-                    initCacheInfo();
-                } 
-                break;
-        }
+        layerValue = layerCombo.getSelectedItem().toString();
         
+        switch (layerValue) {
+            case "L1" : currentCache = L1Cache; System.out.println("L1"); break;
+            case "L2" : currentCache = L2Cache; System.out.println("L2"); break;
+            default   : currentCache = L3Cache; System.out.println("L3");break;
+        }
         refresh();
+        setCacheInfo();
     }//GEN-LAST:event_layerComboItemStateChanged
+
+    private void nbBlockSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_nbBlockSpinnerStateChanged
+        if (triggerStateChange) {
+            generate();
+            refresh();
+        }
+    }//GEN-LAST:event_nbBlockSpinnerStateChanged
 
     /**
      * @param args the command line arguments
